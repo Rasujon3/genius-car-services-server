@@ -7,27 +7,28 @@ const app = express();
 
 const port = process.env.PORT || 5000;
 
-// Middleware
+// middleware
 app.use(cors());
 app.use(express.json());
 
 function verifyJWT(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
-    return res.status(401).send({ message: "Unauthorizes access" });
+    return res.status(401).send({ message: "Unauthorized access" });
   }
   const token = authHeader.split(" ")[1];
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
       return res.status(403).send({ message: "Forbidden access" });
     }
-    // console.log("decoded", decoded);
+    console.log("decoded", decoded);
     req.decoded = decoded;
     next();
   });
+  // console.log("inside verifyJWT", authHeader);
 }
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.mx1wl.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.aq3cg.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -37,11 +38,8 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     await client.connect();
-    const serviceCollection = client
-      .db(`geniousCarServices`)
-      .collection(`services`);
-
-    const orderCollection = client.db(`geniousCarServices`).collection(`order`);
+    const serviceCollection = client.db("geniousCar").collection("service");
+    const orderCollection = client.db("geniousCar").collection("order");
 
     // AUTH
     app.post("/login", async (req, res) => {
@@ -52,9 +50,7 @@ async function run() {
       res.send({ accessToken });
     });
 
-    // Services API
-
-    // GET all services
+    // SERVICES API
     app.get("/service", async (req, res) => {
       const query = {};
       const cursor = serviceCollection.find(query);
@@ -62,7 +58,6 @@ async function run() {
       res.send(services);
     });
 
-    // GET Single service
     app.get("/service/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
@@ -70,13 +65,14 @@ async function run() {
       res.send(service);
     });
 
-    // POST add sercive
+    // POST
     app.post("/service", async (req, res) => {
       const newService = req.body;
       const result = await serviceCollection.insertOne(newService);
       res.send(result);
     });
-    // DELETE Service
+
+    // DELETE
     app.delete("/service/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
@@ -85,18 +81,16 @@ async function run() {
     });
 
     // Order Collection API
-
     app.get("/order", verifyJWT, async (req, res) => {
       const decodedEmail = req.decoded.email;
       const email = req.query.email;
-
       if (email === decodedEmail) {
         const query = { email: email };
         const cursor = orderCollection.find(query);
         const orders = await cursor.toArray();
         res.send(orders);
       } else {
-        return res.status(403).send({ message: "Forbidden access" });
+        res.status(403).send({ message: "forbidden access" });
       }
     });
 
@@ -112,7 +106,7 @@ async function run() {
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
-  res.send("Running `Genius Car` Server");
+  res.send("Running Genious Server");
 });
 
 app.listen(port, () => {
